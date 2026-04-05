@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb13d698a326f9c4e80d6e7bf5c95d89, type: 3}
+  m_Name: Skill Database
+  m_EditorClassIdentifier: 
+  skills:
+  - type: 0
+    index: 0
+    _name: "\uD14C\uC2A4\uD2B8"
+    resource_type: 0
+    resource_amount: 0
+    cooldown: 0
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: 4eb0b3a297d7445b0bac2ecfeb41cd52, type: 3}
+    description: "\uD14C\uC2A4\uD2B8"
+  - type: 2
+    index: 0
+    _name: "\uC740\uC2E0+\uC774\uC18D \uC99D\uAC00"
+    resource_type: 1
+    resource_amount: 0
+    cooldown: 5
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: 0c8f7659f98dd4037bb7eb7c36a2903d, type: 3}
+    description: "3\uCD08\uAC04 \uD22C\uBA85 + \uC774\uB3D9\uC18D\uB3C4 30% \uC99D\uAC00"
+  - type: 2
+    index: 1
+    _name: "\uC554\uD751 \uC2DC\uC57C"
+    resource_type: 1
+    resource_amount: 0
+    cooldown: 5
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: 34a892a3288de4d4da910f4c373dee45, type: 3}
+    description: "4\uCD08\uAC04 \uC801 \uC2DC\uC57C \uC81C\uD55C (\uC6D0 \uC548\uC774
+      \uC5B4\uB461\uAC8C \uBCF4\uC784)"
+  - type: 2
+    index: 2
+    _name: "\uADF8\uB9BC\uC790 \uADC0\uD658"
+    resource_type: 1
+    resource_amount: 5
+    cooldown: 5
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: 540bc0b5676fc4bde832bb968441a3b3, type: 3}
+    description: "\uD45C\uC2DD \uC704\uCE58\uB85C \uC21C\uAC04 \uADC0\uD658 (\uCFE8\uD0C0\uC784
+      \uC874\uC7AC)"
+  - type: 1
+    index: 0
+    _name: "\uAC80"
+    resource_type: 2
+    resource_amount: 0
+    cooldown: 5
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: c9365dd17f80d4cd3b90797dafd9c6e0, type: 3}
+    description: "\uADFC\uC811 \uD718\uB450\uB984 - 1\uD68C \uACF5\uACA9 \uAC00\uB2A5,
+      \uBE60\uB978 \uC18D\uB3C4"
+  - type: 1
+    index: 1
+    _name: "\uCD1D"
+    resource_type: 2
+    resource_amount: 0
+    cooldown: 5
+    currentCooldown: 5
+    sprite: {fileID: 21300000, guid: 92df892897c8b44cd8f235d04a44a18f, type: 3}
+    description: "\uC6D0\uAC70\uB9AC \uBC1C\uC0AC - \uB9DE\uC73C\uBA74 \uC989\uC0AC
+      (\uCD1D\uC54C 1\uBC1C)"
+  - type: 1
+    index: 2
+    _name: "\uC9C0\uB8B0"
+    resource_type: 2
+    resource_amount: 0
+    cooldown: 3
+    currentCooldown: 3
+    sprite: {fileID: 21300000, guid: e75243d64710b42faac45d5f7e255a64, type: 3}
+    description: "\uC124\uCE58\uD615 - \uBC1F\uC73C\uBA74 \uC989\uC0AC + \uC791\uC740
+      \uBC94\uC704 \uD3ED\uBC1C"
+  - type: 3
+    index: 0
+    _name: "\uC790\uC6D0\uC218\uC9D1 \uC2B9\uB9AC"
+    resource_type: 3
+    resource_amount: 0
+    cooldown: 1
+    currentCooldown: 0
+    sprite: {fileID: 21300000, guid: e973a6149cf97420f86c687892dbdbb5, type: 3}
+    description: "\uC790\uC6D01\xB72\xB73\uC744 \uC77C\uC815\uB7C9 \uD655\uBCF4\uD558\uBA74
+      \uC989\uC2DC \uC2B9\uB9AC \uC870\uAC74 \uB2EC\uC131"
+  - type: 3
+    index: 1
+    _name: "NPC \uC804\uBA78 \uC2B9\uB9AC"
+    resource_type: 3
+    resource_amount: 0
+    cooldown: 1
+    currentCooldown: 1
+    sprite: {fileID: 21300000, guid: d8ec7bed8b86f4a3d905859476e40a84, type: 3}
+    description: "\uB9F5\uC758 NPC \uBAA8\uB450 \uC81C\uAC70 \uC2DC \uC989\uC2DC
+      \uC2B9\uB9AC"
+  - type: 3
+    index: 2
+    _name: "\uBC29\uC5B4\uB9C9"
+    resource_type: 3
+    resource_amount: 0
+    cooldown: 1
+    currentCooldown: 1
+    sprite: {fileID: 21300000, guid: cd6bbfbf2fe224e4da6de60544f34630, type: 3}
+    description: "\uACF5\uACA9 1\uD68C \uBB34\uD6A8\uD654 (\uD55C \uBC88\uB9CC \uBC1C\uB3D9)"
