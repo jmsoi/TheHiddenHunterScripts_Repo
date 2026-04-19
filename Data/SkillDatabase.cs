@@ -23,9 +23,9 @@ public class SkillDatabase : ScriptableObject
         skills.Add(new Skill(SkillType.Move, 2, "그림자 귀환", 5f, ResourceType.Blue, 5, null, "표식 위치로 순간 귀환 (쿨타임 존재)"));
         
         // 자원2 (🔴) - 공격/전투 스킬들
-        skills.Add(new Skill(SkillType.Attack, 0, "검", 5f, ResourceType.Red, 4, null, "근접 휘두름 - 1회 공격 가능, 빠른 속도"));
-        skills.Add(new Skill(SkillType.Attack, 1, "활", 5f, ResourceType.Red, 4, null, "원거리 발사 - 맞으면 즉사 (총알 1발)"));
-        skills.Add(new Skill(SkillType.Attack, 2, "지뢰", 3f, ResourceType.Red, 3, null, "설치형 - 밟으면 즉사 + 작은 범위 폭발"));
+        skills.Add(new Skill(SkillType.Attack, 0, "검", 5f, ResourceType.Red, 4, null, "근접형 공격"));
+        skills.Add(new Skill(SkillType.Attack, 1, "활", 5f, ResourceType.Red, 4, null, "원거리형 공격"));
+        skills.Add(new Skill(SkillType.Attack, 2, "지뢰", 3f, ResourceType.Red, 3, null, "설치형 공격"));
         
         // 자원3 (🟡) - 패시브/승리 조건 스킬들
         skills.Add(new Skill(SkillType.Passive, 0, "자원수집 승리", 1f, ResourceType.Yellow, 12, null, "자원1·2·3을 일정량 확보하면 즉시 승리 조건 달성"));

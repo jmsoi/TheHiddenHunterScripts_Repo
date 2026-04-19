@@ -1,5 +1,6 @@
 using UnityEngine;
 using Unity.Netcode;
+using System.Collections;
 
 /// <summary>
 /// 플레이어 이동 담당 컴포넌트
@@ -12,16 +13,42 @@ public class PlayerMovement : NetworkBehaviour
     public float maxSpeed = 3f;
     public float dragWhenMoving = 0f;
     public float dragWhenStopped = 1f;
-    
+
+    public bool isFrozen = false;
+
     public VariableJoystick variableJoystick;
     private Rigidbody playerRigidbody;
     private PlayerStateManager stateManager;
-    
+
     private void Awake()
     {
         playerRigidbody = GetComponent<Rigidbody>();
         stateManager = GetComponent<PlayerStateManager>();
     }
+
+
+    private void OnEnable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen += OnFrozen;
+    }
+    private void OnDisable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen -= OnFrozen;
+    }
+
+    private void OnFrozen(float duration)
+    {
+        StartCoroutine(FrozenCoroutine(duration));
+    }
+    private IEnumerator FrozenCoroutine(float duration)
+    {
+        isFrozen = true;
+        Debug.Log("PlayerMovement: Frozen");
+        yield return new WaitForSeconds(duration);
+        isFrozen = false;
+        Debug.Log("PlayerMovement: Unfrozen");
+    }
+
     
     public void FixedUpdate()
     {
@@ -41,17 +68,8 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
         
-        if (playerRigidbody == null)
-        {
-            playerRigidbody = GetComponent<Rigidbody>();
-            if (playerRigidbody == null)
-            {
-                Debug.LogError($"Player {NetworkObjectId}: Rigidbody component not found!");
-                return;
-            }
-        }
-        
         if (variableJoystick == null) return;
+        if (isFrozen) return;
         
         Vector3 direction = Vector3.forward * variableJoystick.Vertical + Vector3.right * variableJoystick.Horizontal;
         

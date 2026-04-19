@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// 플레이어 상태 관리 및 네트워크 동기화 담당
@@ -10,21 +11,33 @@ public class PlayerStateManager : NetworkBehaviour
     
     public PlayerState CurrentState => networkState.Value;
     
+
+    private void OnEnable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen += OnFrozen;
+    }
+    private void OnDisable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen -= OnFrozen;
+    }
+    private void OnFrozen(float duration)
+    {
+        StartCoroutine(FrozenCoroutine(duration));
+    }
+    private IEnumerator FrozenCoroutine(float duration)
+    {
+        ChangeState(PlayerState.Idle);
+        yield return new WaitForSeconds(duration);
+        ChangeState(PlayerState.Idle);
+    }
+
     public void ChangeState(PlayerState newState)
     {
         if (networkState.Value == newState)
             return;
-            
-        Debug.Log($"Player {NetworkObjectId} ChangeState: {networkState.Value} -> {newState} (IsOwner: {IsOwner}, IsServer: {IsServer})");
-            
-        if (IsServer)
-        {
-            networkState.Value = newState;
-        }
-        else if (IsOwner)
-        {
-            ChangeStateServerRpc(newState);
-        }
+        
+        if (IsServer) networkState.Value = newState;
+        else if (IsOwner) ChangeStateServerRpc(newState);
     }
     
     [ServerRpc]

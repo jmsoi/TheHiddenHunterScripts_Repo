@@ -12,12 +12,21 @@ using UnityEngine.UI;
 [RequireComponent(typeof(PlayerCombat))]
 [RequireComponent(typeof(PlayerHealth))]
 [RequireComponent(typeof(PlayerShop))]
+[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Animator))]
 public class PlayerController : NetworkBehaviour
 {
     [Header("Component References")]
     public VariableJoystick variableJoystick;
     public Rigidbody playerRigidbody;
     public Animator playerAnimator;
+
+    public Material myheadMaterial;
+    public Material mybodyMaterial;
+    public Material otherheadMaterial;
+    public Material otherbodyMaterial;
+    public SkinnedMeshRenderer playerHeadMeshRenderer;
+    public SkinnedMeshRenderer playerBodyMeshRenderer;
     
     private PlayerStateManager stateManager;
     private PlayerMovement movement;
@@ -30,7 +39,7 @@ public class PlayerController : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        
+
         // 컴포넌트 참조 가져오기
         stateManager = GetComponent<PlayerStateManager>();
         movement = GetComponent<PlayerMovement>();
@@ -39,7 +48,24 @@ public class PlayerController : NetworkBehaviour
         combat = GetComponent<PlayerCombat>();
         health = GetComponent<PlayerHealth>();
         shop = GetComponent<PlayerShop>();
+        playerRigidbody = GetComponent<Rigidbody>();
+        playerAnimator = GetComponent<Animator>();
+
+        // playerHeadMeshRenderer.material = isOwner ? myheadMaterial : otherheadMaterial;
+        // playerBodyMeshRenderer.material = isOwner ? mybodyMaterial : otherbodyMaterial;
+        if (IsOwner)
+            OwnerInit();
+        else
+            OtherInit();
         
+        Debug.Log($"Player {NetworkObjectId} OnNetworkSpawn - IsOwner: {IsOwner}, IsServer: {IsServer}");
+    }
+    
+    public void OwnerInit()
+    {
+        playerHeadMeshRenderer.material = myheadMaterial;
+        playerBodyMeshRenderer.material = mybodyMaterial;
+
         // UI 요소 찾기
         var canvas = GameObject.Find("Canvas");
         if (canvas != null)
@@ -54,17 +80,15 @@ public class PlayerController : NetworkBehaviour
                 }
             }
         }
-        
-        // 컴포넌트 초기화
-        if (playerRigidbody == null)
-            playerRigidbody = GetComponent<Rigidbody>();
-            
-        if (playerAnimator == null)
-            playerAnimator = GetComponent<Animator>();
-        
-        Debug.Log($"Player {NetworkObjectId} OnNetworkSpawn - IsOwner: {IsOwner}, IsServer: {IsServer}");
     }
-    
+
+    public void OtherInit()
+    {
+        playerHeadMeshRenderer.material = otherheadMaterial;
+        playerBodyMeshRenderer.material = otherbodyMaterial;
+    }
+
+
     // 공개 메서드들 - 외부에서 호출 가능
     public void Mining()
     {

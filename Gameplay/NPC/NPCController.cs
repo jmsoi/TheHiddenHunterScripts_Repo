@@ -18,7 +18,6 @@ public class NPCController : NetworkBehaviour
     public float miningDuration = GameConstants.NPC.DEFAULT_MINING_TIME;
     public float trackingDuration = GameConstants.NPC.DEFAULT_TRACKING_TIME;
     public float wanderingDuration = GameConstants.NPC.DEFAULT_WANDERING_TIME;
-    
     [Header("Components")]
     private Animator npcAnimator;
     private Rigidbody npcRigidbody;
@@ -26,6 +25,29 @@ public class NPCController : NetworkBehaviour
     // State management
     private float stateTimer;
     private bool isStateInitialized = false;
+
+    private bool isFrozen = false;
+
+    private void OnEnable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen += OnFrozen;
+    }
+    private void OnDisable()
+    {
+        GetComponent<PlayerCombat>().OnFrozen -= OnFrozen;
+    }
+    private void OnFrozen(float duration)
+    {
+        StartCoroutine(FrozenCoroutine(duration));
+    }
+    private IEnumerator FrozenCoroutine(float duration)
+    {
+        isFrozen = true;
+        Debug.Log("NPCController: Frozen");
+        yield return new WaitForSeconds(duration);
+        isFrozen = false;
+        Debug.Log("NPCController: Unfrozen");
+    }
 
     // ===== Unity 생명주기 =====
     

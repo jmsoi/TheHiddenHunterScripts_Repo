@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using System.Collections;
 using System.Threading.Tasks;
 using System;
 using UnityEngine.UI;
@@ -13,7 +14,21 @@ public class GameManager : MonoBehaviour
     // 세션 관리자 참조
     private HostSessionManager _hostSessionManager;
     private ClientSessionManager _clientSessionManager;
+
+    [Header("Game Configuration")]
+    public int maxPlayerCount = GameConstants.DEFAULT_PLAYER_COUNT;
+    public int maxNPCCount = GameConstants.DEFAULT_NPC_COUNT;
+    public int requiredPlayerCount = GameConstants.REQUIRED_PLAYER_COUNT;
+    public bool isGameStarted = false;
+    public int clientReadyCount = 0;
+
+    [Header("UI References")]
+    [HideInInspector] public GameObject loadingPanel;
+    [HideInInspector] public MapCreator mapCreator;
+    [HideInInspector] public GameObject resultPanel;
     
+
+#region Initialize
     private void Awake()
     {
         if (Instance == null)
@@ -22,7 +37,7 @@ public class GameManager : MonoBehaviour
             DontDestroyOnLoad(gameObject);
             
             // 세션 관리자 초기화
-            InitializeSessionManagers();
+            LobbyInitialize();
         }
         else
         {
@@ -30,23 +45,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void InitializeSessionManagers()
+    private void LobbyInitialize()
     {
-        // 호스트 세션 관리자 생성 및 초기화
-        if (_hostSessionManager == null)
-        {
-            var hostManagerObj = new GameObject("HostSessionManager");
-            hostManagerObj.transform.SetParent(transform);
-            _hostSessionManager = hostManagerObj.AddComponent<HostSessionManager>();
-        }
-        
-        // 클라이언트 세션 관리자 생성 및 초기화
-        if (_clientSessionManager == null)
-        {
-            var clientManagerObj = new GameObject("ClientSessionManager");
-            clientManagerObj.transform.SetParent(transform);
-            _clientSessionManager = clientManagerObj.AddComponent<ClientSessionManager>();
-        }
+        _hostSessionManager = GetComponent<HostSessionManager>();
+        _clientSessionManager = GetComponent<ClientSessionManager>();
         
         // UnityTransport 초기화 (NetworkManager가 준비될 때까지 대기)
         var transport = NetworkManager.Singleton?.GetComponent<UnityTransport>();
@@ -61,18 +63,11 @@ public class GameManager : MonoBehaviour
             Debug.LogWarning("[GameManager] NetworkManager.Singleton이 아직 준비되지 않았습니다. 나중에 초기화됩니다.");
         }
     }
+#endregion
 
-    [Header("Game Configuration")]
-    public int maxPlayerCount = GameConstants.DEFAULT_PLAYER_COUNT;
-    public int maxNPCCount = GameConstants.DEFAULT_NPC_COUNT;
-    public int requiredPlayerCount = GameConstants.REQUIRED_PLAYER_COUNT;
-    public bool isGameStarted = false;
-    public int clientReadyCount = 0;
 
-    [Header("UI References")]
-    [HideInInspector] public GameObject loadingPanel;
-    [HideInInspector] public MapCreator mapCreator;
-    [HideInInspector] public GameObject resultPanel;
+
+#region start game session
 
     /// <summary>
     /// 게임 세션 시작 (리팩토링 버전)
@@ -81,8 +76,23 @@ public class GameManager : MonoBehaviour
     public async Task StartGameSession()
     {
         SceneManager.LoadScene(GameConstants.Scenes.GAME_SCENE_NAME);
+
         await Task.Delay((int)(GameConstants.GAME_START_DELAY * 1000)); // 게임 시작 딜레이
+        InGameInitialize();
+
+        // 역할에 따라 적절한 세션 관리자에 위임
+        if (NetworkSessionData.IsHost)        
+            await _hostSessionManager.StartHostSession();
+        else
+            await _clientSessionManager.StartClientSession();
         
+    }
+
+    /// <summary>
+    /// UI 초기화
+    /// </summary>
+    private void InGameInitialize()
+    {        
         try
         {
             var canvas = GameObject.Find("Canvas");
@@ -108,34 +118,30 @@ public class GameManager : MonoBehaviour
         {
             Debug.LogError("[GameManager] LoadingPanel 찾기 실패: " + e);
         }
-
+        
         // 세션 관리자가 초기화되지 않았으면 다시 초기화
         if (_hostSessionManager == null || _clientSessionManager == null)
         {
             Debug.LogWarning("[GameManager] 세션 관리자가 null입니다. 다시 초기화합니다...");
-            InitializeSessionManagers();
-        }
-
-        // 역할에 따라 적절한 세션 관리자에 위임
-        if (NetworkSessionData.IsHost)
-        {
-            if (_hostSessionManager == null)
-            {
-                Debug.LogError("[GameManager] _hostSessionManager가 null입니다!");
-                return;
-            }
-            await _hostSessionManager.StartHostSession();
-        }
-        else
-        {
-            if (_clientSessionManager == null)
-            {
-                Debug.LogError("[GameManager] _clientSessionManager가 null입니다!");
-                return;
-            }
-            await _clientSessionManager.StartClientSession();
+            LobbyInitialize();
         }
     }
+
+    /// <summary>
+    /// MapCreator가 맵 데이터를 생성한 후 호출됨.
+    /// </summary>
+    public void ReadyGame()
+    {
+        StartCoroutine(DelayedStartGame());
+    }
+    private IEnumerator DelayedStartGame()
+    {
+        yield return new WaitForSeconds(1.5f);
+        isGameStarted = true;
+        loadingPanel.SetActive(false);
+    }
+#endregion
+#region end game session
 
     public void EndGameSession(bool isVictory)
     {
@@ -196,4 +202,6 @@ public class GameManager : MonoBehaviour
         // 로비 씬으로 이동
         SceneManager.LoadScene(GameConstants.Scenes.LOBBY_SCENE_NAME);
     }
+
+#endregion
 }

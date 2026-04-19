@@ -45,7 +45,7 @@ public class HostSessionManager : MonoBehaviour
         try
         {
             // 1. Relay 서버 할당 생성
-            var alloc = await RelayService.Instance.CreateAllocationAsync(_gameManager.requiredPlayerCount);
+            var alloc = await RelayService.Instance.CreateAllocationAsync(GameManager.Instance.requiredPlayerCount);
             NetworkSessionData.RelayCode = await RelayService.Instance.GetJoinCodeAsync(alloc.AllocationId);
             
             // 2. Unity Transport 설정 및 호스트 시작
@@ -58,7 +58,7 @@ public class HostSessionManager : MonoBehaviour
             
             // 4. 맵 생성
             await Task.Delay(2000);
-            _gameManager.mapCreator?.LoadScene();
+            _gameManager.mapCreator?.LoadMapData();
         }
         catch (Exception e)
         {

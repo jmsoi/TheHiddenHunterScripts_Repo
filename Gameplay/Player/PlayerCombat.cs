@@ -1,5 +1,8 @@
 using UnityEngine;
 using Unity.Netcode;
+using System.Collections;
+using UnityEngine.UI;
+using System;
 
 /// <summary>
 /// 플레이어 전투 및 스킬 사용 담당
@@ -12,12 +15,31 @@ public class PlayerCombat : NetworkBehaviour
     
     private PlayerStateManager stateManager;
     private PlayerAnimationController animationController;
+
+    //스킬 관련 오브젝트
     public GameObject bulletPrefab;
+    public GameObject landMinePrefab_visible;
+    public GameObject landMinePrefab_invisible;
+
+    public Material myheadMaterial;
+    public Material mybodyMaterial;
+
+    public Image blindZoneImage;
+
+    // public event Action<bool> OnKnifeAttack;
+    // public event Action<bool> OnGunAttack;
+    // public event Action<bool> OnLandMineAttack;
+    public event Action<bool> OnHide;
+    public event Action<bool> OnBlindZone;
+    public event Action<float> OnFrozen;
+    public float frozenDuration = 10f;
+    
     
     private void Awake()
     {
         stateManager = GetComponent<PlayerStateManager>();
         animationController = GetComponent<PlayerAnimationController>();
+        blindZoneImage = GameObject.Find("Canvas").transform.Find("BlindImage").GetComponent<Image>();
     }
     
     private void OnEnable()
@@ -49,15 +71,18 @@ public class PlayerCombat : NetworkBehaviour
             {
                 case 0:
                     stateManager.ChangeState(PlayerState.Attack_Knife);
-                    KnifeAttack();
+                    // KnifeAttack();
+                    KnifeAttackServerRpc();
                     break;
                 case 1:
                     stateManager.ChangeState(PlayerState.Attack_Gun);
-                    GunAttack();
+                    // GunAttack();
+                    GunAttackServerRpc();
                     break;
                 case 2:
                     stateManager.ChangeState(PlayerState.Attack_LandMine);
-                    LandMineAttack();
+                    // LandMineAttack();
+                    LandMineAttackServerRpc();
                     break;
             }
         }
@@ -66,13 +91,19 @@ public class PlayerCombat : NetworkBehaviour
             switch (skill.index)
             {
                 case 0:
-                    animationController?.SetTrigger("Hide");
+                    // animationController?.SetTrigger("Hide");
+                    // HideMove();
+                    HideMoveServerRpc();
                     break;
                 case 1:
-                    animationController?.SetTrigger("BlindZone");
+                    // animationController?.SetTrigger("BlindZone");
+                    // BlindZoneMove();
+                    BlindZoneMoveServerRpc();
                     break;
                 case 2:
-                    animationController?.SetTrigger("ShadowReturn");
+                    // animationController?.SetTrigger("Frozen");
+                    // FrozenMove();
+                    FrozenMoveServerRpc();
                     break;
             }
         }
@@ -81,136 +112,84 @@ public class PlayerCombat : NetworkBehaviour
             switch (skill.index)
             {
                 case 0:
-                    animationController?.SetTrigger("ResourceMaster");
+                    ResourceMasterPassiveServerRpc();
                     break;
                 case 1:
-                    animationController?.SetTrigger("NPC_Killer");
+                    NPCKillerPassiveServerRpc();
                     break;
                 case 2:
-                    animationController?.SetTrigger("Shield");
+                    // ShieldPassiveServerRpc();
                     break;
             }
         }
     }
     
-    public void KnifeAttack()
-    {
-        // 서버에서만 공격 검증 및 처리
-        if (IsServer)
-        {
-            ExecuteKnifeAttack();
-        }
-        else if (IsOwner)
-        {
-            // 클라이언트에서는 서버에 요청
-            KnifeAttackServerRpc();
-        }
-    }
-    
-    [ServerRpc]
+
+
+    #region Attack
+
+    [ServerRpc(RequireOwnership = true)]
     void KnifeAttackServerRpc()
     {
-        ExecuteKnifeAttack();
-    }
-    
-    private void ExecuteKnifeAttack()
-    {
-        Debug.Log($"Player {NetworkObjectId} KnifeAttack 시작");
-        
         Vector3 boxCenter = transform.position + transform.TransformDirection(new Vector3(0, 1, 1));
         Collider[] hitColliders = Physics.OverlapBox(boxCenter, new Vector3(0.5f, 1, 1) * 0.5f, Quaternion.identity, characterLayerMask);
         
-        if (hitColliders.Length > 0)
+        if (hitColliders.Length == 0) return;
+        
+        GameObject nearObj = null;
+        float nearObjDistance = 100;
+        
+        // 가장 가까운 적 찾기
+        for (int i = 0; i < hitColliders.Length; i++)
         {
-            GameObject nearObj = null;
-            float nearObjDistance = 100;
-            
-            for (int i = 0; i < hitColliders.Length; i++)
+            if (hitColliders[i].CompareTag("NPC") || hitColliders[i].CompareTag("Player"))
             {
-                if (hitColliders[i].CompareTag("NPC") || hitColliders[i].CompareTag("Player"))
-                {
-                    // 자기 자신은 공격 대상에서 제외
-                    if (hitColliders[i].gameObject == gameObject)
-                        continue;
+                // 자기 자신은 공격 대상에서 제외
+                if (hitColliders[i].gameObject == gameObject)
+                    continue;
 
-                    float distance = Vector3.Distance(transform.position, hitColliders[i].transform.position);
-                    if (distance < nearObjDistance)
-                    {
-                        nearObjDistance = distance;
-                        nearObj = hitColliders[i].gameObject;
-                    }
+                float distance = Vector3.Distance(transform.position, hitColliders[i].transform.position);
+                if (distance < nearObjDistance)
+                {
+                    nearObjDistance = distance;
+                    nearObj = hitColliders[i].gameObject;
                 }
             }
-            
-            if (nearObj == null)
+        }
+        
+        if (nearObj == null)
+        {
+            Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 실패");
+            stateManager.ChangeState(PlayerState.Idle);
+            return;
+        }
+        
+        if (nearObj.CompareTag("NPC"))
+        {
+            nearObj.GetComponent<NPCController>().Dead();
+            Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - NPC 제거");
+        }
+        else if (nearObj.CompareTag("Player"))
+        {
+            // 서버에서 피격자 플레이어의 Dead() 호출
+            var targetHealth = nearObj.GetComponent<PlayerHealth>();
+            if (targetHealth != null)
             {
-                Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 실패");
-                stateManager.ChangeState(PlayerState.Idle);
-                return;
-            }
-            
-            if (nearObj.CompareTag("NPC"))
-            {
-                nearObj.GetComponent<NPCController>().Dead();
-                Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - NPC 제거");
-            }
-            else if (nearObj.CompareTag("Player"))
-            {
-                // 서버에서 피격자 플레이어의 Dead() 호출
-                var targetHealth = nearObj.GetComponent<PlayerHealth>();
-                if (targetHealth != null)
+                targetHealth.Dead();
+                Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - Player 제거");
+                
+                // 공격자(자기 자신)의 클라이언트에서만 승리 처리
+                if (IsOwner)
                 {
-                    targetHealth.Dead();
-                    Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - Player 제거");
-                    
-                    // 공격자(자기 자신)의 클라이언트에서만 승리 처리
-                    if (IsOwner)
-                    {
-                        EndGameSessionClientRpc(true);
-                    }
+                    EndGameSessionClientRpc(true);
                 }
             }
         }
         stateManager.ChangeState(PlayerState.Idle);
     }
-    
-    [ClientRpc]
-    void EndGameSessionClientRpc(bool isVictory)
-    {
-        // 공격자의 클라이언트에서만 승리 화면 표시
-        if (IsOwner)
-        {
-            GameManager.Instance.EndGameSession(isVictory);
-        }
-    }
-    
-    
-    public void GunAttack()
-    {
-        Debug.Log($"Player {NetworkObjectId} GunAttack 시작");
-        
-        // 서버에서만 공격 검증 및 처리
-        if (IsServer)
-        {
-            ExecuteGunAttack();
-        }
-        else if (IsOwner)
-        {
-            // 클라이언트에서는 서버에 요청
-            GunAttackServerRpc();
-        }
-    }
-    
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = true)]
     void GunAttackServerRpc()
     {
-        ExecuteGunAttack();
-    }
-    
-    private void ExecuteGunAttack()
-    {
-        Debug.Log($"Player {NetworkObjectId} GunAttack 시작");
-        
         // 가장 가까운 적 찾기
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, 4f, characterLayerMask);
         
@@ -331,11 +310,162 @@ public class PlayerCombat : NetworkBehaviour
         Debug.Log($"Player {NetworkObjectId} 총알이 빗나감");
         stateManager.ChangeState(PlayerState.Idle);
     }
-    
-    public void LandMineAttack()
+
+    [ServerRpc(RequireOwnership = true)]
+    void LandMineAttackServerRpc()
     {
-        Debug.Log($"Player {NetworkObjectId} LandMineAttack 시작");
-        // TODO: 지뢰 공격 로직 구현
+        LandMineAttackClientRpc();
+    }
+    [ClientRpc]
+    void LandMineAttackClientRpc()
+    {
+        if (IsOwner)
+        {
+            GameObject landMineVisible = Instantiate(landMinePrefab_visible, transform.position, Quaternion.identity);
+        }
+        else
+        {
+            GameObject landMineInvisible = Instantiate(landMinePrefab_invisible, transform.position, Quaternion.identity);
+        }
+    }
+    #endregion
+
+    #region Hide Move
+    [ServerRpc(RequireOwnership = true)]
+    void HideMoveServerRpc() => HideMoveApplyClientRpc();
+
+    [ClientRpc]
+    void HideMoveApplyClientRpc() => StartCoroutine(HideMoveCoroutine());
+
+    private IEnumerator HideMoveCoroutine()
+    {
+        var movement = GetComponent<PlayerMovement>();
+        Transform child = transform.GetChild(0);
+
+        if (IsOwner)
+        {
+            movement.maxSpeed *= 1.5f;
+            myheadMaterial.SetColor("_EmissionColor", new Color(0f, 10f, 0f));
+            mybodyMaterial.SetColor("_EmissionColor", new Color(0f, 10f, 0f));
+        }
+        else
+        {
+            child.gameObject.SetActive(false);
+        }
+        yield return new WaitForSeconds(3f);
+
+        if (IsOwner)
+        {
+            movement.maxSpeed /= 1.5f;
+            myheadMaterial.SetColor("_EmissionColor", Color.black);
+            mybodyMaterial.SetColor("_EmissionColor", Color.black);
+        }
+        else
+        {
+            child.gameObject.SetActive(true);
+        }
+    }
+    #endregion
+
+    #region Blind Zone Move
+    [ServerRpc(RequireOwnership = true)]
+    void BlindZoneMoveServerRpc() => BlindZoneMoveApplyClientRpc();
+
+    [ClientRpc]
+    void BlindZoneMoveApplyClientRpc() => StartCoroutine(BlindZoneMoveCoroutine());
+
+    private IEnumerator BlindZoneMoveCoroutine()
+    {
+        float duration = 3f;
+
+        float transTimer = 0f;
+        float transDuration = 0.3f;
+
+
+        if (IsOwner == false)
+        {
+            blindZoneImage.color = new Color(0,0,0,0);
+
+            while (transTimer < transDuration)
+            {
+                transTimer += Time.deltaTime;
+                blindZoneImage.color = new Color(0,0,0, Mathf.Lerp(0, 1, transTimer / transDuration));
+                yield return null;
+            }
+            
+            yield return new WaitForSeconds(duration);
+            transTimer = 0f;
+
+            while (transTimer < transDuration)
+            {
+                transTimer += Time.deltaTime;
+                blindZoneImage.color = new Color(0,0,0, Mathf.Lerp(1, 0, transTimer / transDuration));
+                yield return null;
+            }   
+        }
+    }
+    #endregion
+
+    #region Frozen Move
+    [ServerRpc(RequireOwnership = true)]
+    void FrozenMoveServerRpc()
+    {
+
+        OnFrozen?.Invoke(frozenDuration);
+    }
+    #endregion
+
+    #region Passive
+
+    [ServerRpc(RequireOwnership = true)]
+    void ResourceMasterPassiveServerRpc()
+    {
+        ResourceMasterPassiveClientRpc();
+    }
+    [ClientRpc]
+    void ResourceMasterPassiveClientRpc()
+    {
+        ResourceMasterPassive();
+    }
+    void ResourceMasterPassive()
+    {
+        // TODO: 자원수집 승리 로직 구현
+    }
+
+
+    [ServerRpc(RequireOwnership = true)]
+    void NPCKillerPassiveServerRpc()
+    {
+        NPCKillerPassiveClientRpc();
+    }
+    [ClientRpc]
+    void NPCKillerPassiveClientRpc()
+    {
+        
+    }
+
+
+    // [ServerRpc(RequireOwnership = true)]
+    // void ShieldPassiveServerRpc()
+    // {
+    //     ShieldPassiveClientRpc();
+    // }
+    // [ClientRpc]
+    // void ShieldPassiveClientRpc()
+    // {
+    //     ShieldPassive();
+    // }
+    #endregion
+
+    
+    [ClientRpc]
+    void EndGameSessionClientRpc(bool isVictory)
+    {
+        // 공격자의 클라이언트에서만 승리 화면 표시
+        if (IsOwner)
+        {
+            GameManager.Instance.EndGameSession(isVictory);
+        }
     }
 }
 

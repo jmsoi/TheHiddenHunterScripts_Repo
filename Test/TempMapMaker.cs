@@ -8,6 +8,7 @@ public class TempMapMaker : MonoBehaviour
 
     private void OnEnable()
     {
+        Debug.Log("NetworkManager.Singleton: " + NetworkManager.Singleton);
         if (NetworkManager.Singleton != null)
         {
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -26,7 +27,7 @@ public class TempMapMaker : MonoBehaviour
     private void OnClientConnected(ulong clientId)
     {
         // 서버/호스트에서만 플레이어 스폰
-        if (!NetworkManager.Singleton.IsServer)
+        if (NetworkManager.Singleton.IsServer == false)
             return;
 
         // 이미 플레이어가 있으면 중복 스폰 방지 (옵션)

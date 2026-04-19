@@ -24,7 +24,7 @@ MonoBehaviour:
     description: "\uD14C\uC2A4\uD2B8"
   - type: 2
     index: 0
-    _name: "\uC740\uC2E0+\uC774\uC18D \uC99D\uAC00"
+    _name: "\uC740\uC2E0, \uC774\uC18D \uC99D\uAC00"
     resource_type: 1
     resource_amount: 0
     cooldown: 5
@@ -45,7 +45,7 @@ MonoBehaviour:
     index: 2
     _name: "\uADF8\uB9BC\uC790 \uADC0\uD658"
     resource_type: 1
-    resource_amount: 5
+    resource_amount: 0
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: 540bc0b5676fc4bde832bb968441a3b3, type: 3}
@@ -67,7 +67,7 @@ MonoBehaviour:
     resource_type: 2
     resource_amount: 0
     cooldown: 5
-    currentCooldown: 5
+    currentCooldown: 0
     sprite: {fileID: 21300000, guid: 92df892897c8b44cd8f235d04a44a18f, type: 3}
     description: "\uC6D0\uAC70\uB9AC \uBC1C\uC0AC - \uB9DE\uC73C\uBA74 \uC989\uC0AC
       (\uCD1D\uC54C 1\uBC1C)"
@@ -77,7 +77,7 @@ MonoBehaviour:
     resource_type: 2
     resource_amount: 0
     cooldown: 3
-    currentCooldown: 3
+    currentCooldown: 0
     sprite: {fileID: 21300000, guid: e75243d64710b42faac45d5f7e255a64, type: 3}
     description: "\uC124\uCE58\uD615 - \uBC1F\uC73C\uBA74 \uC989\uC0AC + \uC791\uC740
       \uBC94\uC704 \uD3ED\uBC1C"

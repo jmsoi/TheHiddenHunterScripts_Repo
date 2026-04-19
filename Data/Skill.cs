@@ -60,12 +60,14 @@ public class Skill
     }
     
     // 스킬 사용 (쿨다운 시작)
-    public void Use()
+    public string Use()
     {
         if (CanUse())
         {
             currentCooldown = cooldown;
+            return $"{_name} 스킬 사용 성공";
         }
+        return $"{_name} 스킬 사용 실패";
     }
     
     // 쿨다운 업데이트

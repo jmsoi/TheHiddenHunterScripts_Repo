@@ -21,7 +21,7 @@ public class MapCreator : NetworkBehaviour
     public MapObject[] tempMapData;// = new MapObject[MapManager.Instance.width * MapManager.Instance.height]; // 맵 데이터를 1차원 int 배열로 직렬화
     public GameObject[] tempMapGameObjects;
 
-    public void LoadScene()
+    public void LoadMapData()
     {
         if (IsHost)
         {
@@ -216,16 +216,6 @@ public class MapCreator : NetworkBehaviour
         Debug.Log("MapCreator: 플레이어 스폰 완료");
         MapManager.Instance.mapGameObjects = tempMapGameObjects;        
         
-        // 1.5초 대기 후 게임 시작
-        StartCoroutine(DelayedStartGame());
-    }
-
-    private IEnumerator DelayedStartGame()
-    {
-        yield return new WaitForSeconds(1.5f);
-        
-        // 게임 시작
-        GameManager.Instance.isGameStarted = true;
-        GameManager.Instance.loadingPanel.SetActive(false);
+        GameManager.Instance.ReadyGame();
     }
 }
