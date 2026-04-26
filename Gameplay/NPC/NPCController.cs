@@ -1,10 +1,13 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using Unity.Netcode;
 
 public class NPCController : NetworkBehaviour
 {
+    public static event Action OnAnyNpcDead;
+
     public enum NPCState { Idle, Tracking, Wandering, Mining, Purchasing, Dead }
     
     [Header("Network Synchronization")]
@@ -174,7 +177,7 @@ public class NPCController : NetworkBehaviour
                 // Debug.Log("NPC: 채굴 시작");
                 break;
             case NPCState.Purchasing:
-                stateTimer = Random.Range(2f, 5f);
+                stateTimer = UnityEngine.Random.Range(2f, 5f);
                 // Debug.Log("NPC: 구매 시작");
                 break;
         }
@@ -185,7 +188,7 @@ public class NPCController : NetworkBehaviour
     {
         // 광물 타입 랜덤 선택
         ResourceType[] resourceTypes = { ResourceType.Blue, ResourceType.Red, ResourceType.Yellow };
-        ResourceType targetResourceType = resourceTypes[Random.Range(0, resourceTypes.Length)];
+        ResourceType targetResourceType = resourceTypes[UnityEngine.Random.Range(0, resourceTypes.Length)];
         
         // 가장 가까운 광물 위치 찾기
         (int idx, Vector3 mineralPosition) = MapManager.Instance.GetMineralNearestPosition(targetResourceType, transform.position);
@@ -207,7 +210,7 @@ public class NPCController : NetworkBehaviour
     void InitializeWandering()
     {
         // 랜덤한 방향으로 이동
-        Vector3 randomDirection = Random.insideUnitSphere * 10f;
+        Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * 10f;
         randomDirection.y = 0;
         Vector3 wanderTarget = transform.position + randomDirection;
         targetPosition.Value = wanderTarget;
@@ -222,7 +225,7 @@ public class NPCController : NetworkBehaviour
         {
             case NPCState.Idle:
                 // 70% 확률로 추적, 30% 확률로 탐색
-                if (Random.Range(0f, 1f) < 0.7f && MapManager.Instance.GetAllMineralCount() > 0)
+                if (UnityEngine.Random.Range(0f, 1f) < 0.7f && MapManager.Instance.GetAllMineralCount() > 0)
                 {
                     // Debug.Log("NPC: 추적 시작");
                     ChangeState(NPCState.Tracking);
@@ -262,7 +265,11 @@ public class NPCController : NetworkBehaviour
 
     public void Dead()
     {
+        if (currentState.Value == NPCState.Dead)
+            return;
         ChangeState(NPCState.Dead);
+        if (IsServer)
+            OnAnyNpcDead?.Invoke();
     }
 
     // ===== 이동 시스템 =====

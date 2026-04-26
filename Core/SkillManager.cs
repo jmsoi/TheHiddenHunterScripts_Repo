@@ -39,12 +39,15 @@ public class SkillManager : MonoBehaviour
             playerSkills[i].currentCooldown = 0;
         }
     }
-    
-    public bool PurchaseSkill(int skillIndex)
+
+    /// <summary>
+    /// 빈 슬롯에 스킬을 넣습니다. 자원 차감·상점/패시브 잠금은 호출 쪽(PlayerShop 등)에서 처리합니다.
+    /// </summary>
+    public bool TryAddSkillToFirstEmptySlot(Skill skillDefinition)
     {
-        var skillData = skillDatabase.skills[skillIndex];
-        
-        // 빈 슬롯 찾기 (쿨다운이 끝난 슬롯만)
+        if (skillDefinition == null || skillDatabase == null)
+            return false;
+
         int emptySlot = -1;
         for (int i = 0; i < playerSkills.Length; i++)
         {
@@ -54,26 +57,28 @@ public class SkillManager : MonoBehaviour
                 break;
             }
         }
-        
+
         if (emptySlot == -1)
         {
             Debug.Log("사용 가능한 스킬 슬롯이 없습니다 (쿨다운 중이거나 슬롯이 가득 찬 경우)");
             return false;
         }
-        
-        // 자원 확인 및 차감
-        if (ResourceManager.Instance.SpendResource(skillData.resource_type, skillData.resource_amount))
-        {
-            playerSkills[emptySlot] = skillData;
-            OnSkillPurchased?.Invoke(emptySlot, skillData);
-            return true;
-        }
-        
-        return false;
+
+        playerSkills[emptySlot] = skillDefinition;
+        OnSkillPurchased?.Invoke(emptySlot, skillDefinition);
+        return true;
     }
     
     public bool UseSkill(int slotIndex)
     {
+        if (slotIndex < 0 || slotIndex >= playerSkills.Length)
+            return false;
+        if (playerSkills[slotIndex].type == SkillType.Passive)
+        {
+            Debug.Log($"패시브 스킬은 수동 사용할 수 없습니다: {playerSkills[slotIndex]._name}");
+            return false;
+        }
+
         Debug.Log("UseSkill: " + playerSkills[slotIndex].CanUse());
         if (slotIndex >= 0 && slotIndex < playerSkills.Length && playerSkills[slotIndex].CanUse())
         {
@@ -84,6 +89,20 @@ public class SkillManager : MonoBehaviour
             // playerSkills[slotIndex] = new Skill();
             // playerSkills[slotIndex].currentCooldown = usedSkill.currentCooldown; // 쿨다운 정보 유지
             return true;
+        }
+        return false;
+    }
+
+    public bool HasPassiveSkill(int passiveIndex)
+    {
+        for (int i = 0; i < playerSkills.Length; i++)
+        {
+            if (playerSkills[i] != null &&
+                playerSkills[i].type == SkillType.Passive &&
+                playerSkills[i].index == passiveIndex)
+            {
+                return true;
+            }
         }
         return false;
     }
@@ -111,4 +130,4 @@ public class SkillManager : MonoBehaviour
             return playerSkills[slotIndex];
         return null;
     }
-} 
+}

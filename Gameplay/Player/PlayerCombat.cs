@@ -12,7 +12,6 @@ public class PlayerCombat : NetworkBehaviour
     [Header("Combat Settings")]
     public LayerMask characterLayerMask = 1 << 3; // 레이어 0, 1 (1 + 2 = 3)
     public LayerMask blockLayerMask = 1 << 7; // Block 레이어 (7번째 레이어)
-    
     private PlayerStateManager stateManager;
     private PlayerAnimationController animationController;
 
@@ -33,6 +32,12 @@ public class PlayerCombat : NetworkBehaviour
     public event Action<bool> OnBlindZone;
     public event Action<float> OnFrozen;
     public float frozenDuration = 10f;
+
+    [Header("Passive Win Condition")]
+    public int resourceMasterWinAmount = 10;
+
+    private bool resourceMasterWinTriggered;
+    private bool npcKillerWinTriggered;
     
     
     private void Awake()
@@ -47,7 +52,11 @@ public class PlayerCombat : NetworkBehaviour
         if (SkillManager.Instance != null)
         {
             SkillManager.Instance.OnSkillUsed += OnSkillUsed;
+            SkillManager.Instance.OnSkillPurchased += OnSkillPurchased;
         }
+        if (ResourceManager.Instance != null)
+            ResourceManager.Instance.OnResourceChanged += OnResourceChanged;
+        NPCController.OnAnyNpcDead += OnAnyNpcDead;
     }
     
     private void OnDisable()
@@ -55,7 +64,78 @@ public class PlayerCombat : NetworkBehaviour
         if (SkillManager.Instance != null)
         {
             SkillManager.Instance.OnSkillUsed -= OnSkillUsed;
+            SkillManager.Instance.OnSkillPurchased -= OnSkillPurchased;
         }
+        if (ResourceManager.Instance != null)
+            ResourceManager.Instance.OnResourceChanged -= OnResourceChanged;
+        NPCController.OnAnyNpcDead -= OnAnyNpcDead;
+    }
+
+    private bool CanEvaluatePassiveWin()
+    {
+        return IsOwner && SkillManager.Instance != null && GameManager.Instance != null && GameManager.Instance.isGameStarted;
+    }
+
+    private void OnSkillPurchased(int slotIndex, Skill skill)
+    {
+        if (!CanEvaluatePassiveWin() || skill == null || skill.type != SkillType.Passive)
+            return;
+
+        if (skill.index == 0)
+            TryTriggerResourceMasterWin();
+        else if (skill.index == 1)
+            TryTriggerNpcKillerWin();
+    }
+
+    private void OnResourceChanged(ResourceType type, int amount)
+    {
+        if (!CanEvaluatePassiveWin())
+            return;
+        TryTriggerResourceMasterWin();
+    }
+
+    private void OnAnyNpcDead()
+    {
+        if (!CanEvaluatePassiveWin())
+            return;
+        TryTriggerNpcKillerWin();
+    }
+
+    private void TryTriggerResourceMasterWin()
+    {
+        if (resourceMasterWinTriggered || !SkillManager.Instance.HasPassiveSkill(0))
+            return;
+
+        bool hasBlue = ResourceManager.Instance.GetResource(ResourceType.Blue) >= resourceMasterWinAmount;
+        bool hasRed = ResourceManager.Instance.GetResource(ResourceType.Red) >= resourceMasterWinAmount;
+        bool hasYellow = ResourceManager.Instance.GetResource(ResourceType.Yellow) >= resourceMasterWinAmount;
+        if (!hasBlue || !hasRed || !hasYellow)
+            return;
+
+        resourceMasterWinTriggered = true;
+        Debug.Log("자원수집 승리 조건 달성");
+        GameManager.Instance.EndGameSession(true);
+    }
+
+    private void TryTriggerNpcKillerWin()
+    {
+        if (npcKillerWinTriggered || !SkillManager.Instance.HasPassiveSkill(1))
+            return;
+
+        var allNpcs = FindObjectsByType<NPCController>(FindObjectsSortMode.None);
+        if (allNpcs.Length == 0)
+            return;
+        for (int i = 0; i < allNpcs.Length; i++)
+        {
+            if (allNpcs[i].currentState.Value != NPCController.NPCState.Dead)
+            {
+                return;
+            }
+        }
+
+        npcKillerWinTriggered = true;
+        Debug.Log("NPC 전멸 승리 조건 달성");
+        GameManager.Instance.EndGameSession(true);
     }
     
     void OnSkillUsed(int slotIndex)
@@ -322,10 +402,60 @@ public class PlayerCombat : NetworkBehaviour
         if (IsOwner)
         {
             GameObject landMineVisible = Instantiate(landMinePrefab_visible, transform.position, Quaternion.identity);
+            var landmine = landMineVisible.GetComponent<Landmine>();
+            if (landmine != null)
+            {
+                landmine.Initialize(this);
+            }
         }
         else
         {
             GameObject landMineInvisible = Instantiate(landMinePrefab_invisible, transform.position, Quaternion.identity);
+            var landmine = landMineInvisible.GetComponent<Landmine>();
+            if (landmine != null)
+            {
+                landmine.Initialize(this);
+            }
+        }
+    }
+
+    [ServerRpc(RequireOwnership = true)]
+    public void LandmineDetonateServerRpc(ulong targetNetworkObjectId)
+    {
+        var nm = NetworkManager.Singleton;
+        if (nm == null)
+            return;
+        if (!IsServer)
+            return;
+
+        // 접촉 확정 시 소유자 지뢰를 전 클라이언트에서 제거
+        ClearOwnedLandminesClientRpc();
+        if (!nm.SpawnManager.SpawnedObjects.TryGetValue(targetNetworkObjectId, out var targetNetworkObject))
+            return;
+        if (targetNetworkObject == null || targetNetworkObject.gameObject == gameObject)
+            return;
+
+        if (targetNetworkObject.TryGetComponent<PlayerHealth>(out var targetHealth))
+        {
+            targetHealth.Dead();
+            EndGameSessionClientRpc(true);
+            return;
+        }
+
+        if (targetNetworkObject.TryGetComponent<NPCController>(out var npc))
+            npc.Dead();
+    }
+
+    [ClientRpc]
+    void ClearOwnedLandminesClientRpc()
+    {
+        var allLandmines = FindObjectsByType<Landmine>(FindObjectsSortMode.None);
+        foreach (var landmine in allLandmines)
+        {
+            if (landmine == null)
+                continue;
+            if (landmine.OwnerClientId == OwnerClientId)
+                Destroy(landmine.gameObject);
         }
     }
     #endregion
@@ -407,11 +537,33 @@ public class PlayerCombat : NetworkBehaviour
     #endregion
 
     #region Frozen Move
+    /// <summary>
+    /// 시전자(오너)를 제외한 모든 접속 플레이어에게 동결을 적용합니다.
+    /// OnFrozen은 로컬 이벤트이므로 ServerRpc 본문에서 직접 Invoke하지 않고,
+    /// 각 피해자 PlayerCombat의 ClientRpc로 클라이언트에서 Invoke합니다.
+    /// </summary>
     [ServerRpc(RequireOwnership = true)]
-    void FrozenMoveServerRpc()
+    void FrozenMoveServerRpc(ServerRpcParams serverRpcParams = default)
     {
+        ulong senderClientId = serverRpcParams.Receive.SenderClientId;
+        var nm = NetworkManager.Singleton;
+        if (nm == null) return;
 
-        OnFrozen?.Invoke(frozenDuration);
+        foreach (var client in nm.ConnectedClientsList)
+        {
+            if (client.ClientId == senderClientId)
+                continue;
+            if (client.PlayerObject == null)
+                continue;
+            var victimCombat = client.PlayerObject.GetComponent<PlayerCombat>();
+            victimCombat?.ApplyFreezeClientRpc(frozenDuration);
+        }
+    }
+
+    [ClientRpc]
+    void ApplyFreezeClientRpc(float duration)
+    {
+        OnFrozen?.Invoke(duration);
     }
     #endregion
 

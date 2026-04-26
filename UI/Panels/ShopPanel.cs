@@ -17,11 +17,14 @@ public class ShopPanel : MonoBehaviour
     public Sprite blueFrame;
     public Sprite redFrame;
     public Sprite yellowFrame;
+
+    private PlayerShop ownerShop;
     
     void Start()
     {
         SkillManager.Instance.OnSkillPurchased += OnSkillPurchased;
         ResourceManager.Instance.OnResourceChanged += OnResourceChanged;
+        ownerShop = FindOwnerShop();
         InitializeShopButtons();
     }
     
@@ -59,15 +62,14 @@ public class ShopPanel : MonoBehaviour
     
     void OnShopItemClick(int skillIndex)
     {
-        if (SkillManager.Instance.PurchaseSkill(skillIndex))
+        ownerShop ??= FindOwnerShop();
+        if (ownerShop == null)
         {
-            Debug.Log($"스킬 {skillIndex} 구매 완료!");
-            UpdateButtonStates();
+            Debug.LogWarning("Owner PlayerShop을 찾지 못했습니다.");
+            return;
         }
-        else
-        {
-            Debug.Log("스킬 구매 실패");
-        }
+        ownerShop.RequestPurchaseSkill(skillIndex);
+        UpdateButtonStates();
     }
     
     void OnSkillPurchased(int slotIndex, Skill skill)
@@ -112,5 +114,16 @@ public class ShopPanel : MonoBehaviour
             case ResourceType.Yellow: return yellowFrame;
             default: return noFrame;
         }
+    }
+
+    private PlayerShop FindOwnerShop()
+    {
+        var shops = FindObjectsByType<PlayerShop>(FindObjectsSortMode.None);
+        for (int i = 0; i < shops.Length; i++)
+        {
+            if (shops[i] != null && shops[i].IsOwner)
+                return shops[i];
+        }
+        return null;
     }
 } 
