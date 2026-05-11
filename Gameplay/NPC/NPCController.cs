@@ -30,18 +30,21 @@ public class NPCController : NetworkBehaviour
     private bool isStateInitialized = false;
 
     private bool isFrozen = false;
+    private Coroutine frozenRoutine;
 
-    private void OnEnable()
+    public void ApplyFrozenFromServer(float duration)
     {
-        GetComponent<PlayerCombat>().OnFrozen += OnFrozen;
+        if (!IsServer)
+            return;
+        ApplyFrozenClientRpc(duration);
     }
-    private void OnDisable()
+
+    [ClientRpc]
+    private void ApplyFrozenClientRpc(float duration)
     {
-        GetComponent<PlayerCombat>().OnFrozen -= OnFrozen;
-    }
-    private void OnFrozen(float duration)
-    {
-        StartCoroutine(FrozenCoroutine(duration));
+        if (frozenRoutine != null)
+            StopCoroutine(frozenRoutine);
+        frozenRoutine = StartCoroutine(FrozenCoroutine(duration));
     }
     private IEnumerator FrozenCoroutine(float duration)
     {
@@ -49,6 +52,7 @@ public class NPCController : NetworkBehaviour
         Debug.Log("NPCController: Frozen");
         yield return new WaitForSeconds(duration);
         isFrozen = false;
+        frozenRoutine = null;
         Debug.Log("NPCController: Unfrozen");
     }
 
@@ -76,6 +80,13 @@ public class NPCController : NetworkBehaviour
         // 이동·물리는 서버에서만 (클라이언트는 NetworkTransform 등으로 위치 동기화)
         if (IsServer && GameManager.Instance.isGameStarted && currentState.Value != NPCState.Dead)
         {
+            if (isFrozen)
+            {
+                if (npcRigidbody != null)
+                    npcRigidbody.linearVelocity = new Vector3(0, npcRigidbody.linearVelocity.y, 0);
+                return;
+            }
+
             if (currentState.Value == NPCState.Tracking || currentState.Value == NPCState.Wandering)
             {   
                 MoveToTarget();
@@ -101,6 +112,13 @@ public class NPCController : NetworkBehaviour
         }
     }
     
+    /// <summary>
+    /// Idle 클립에 넣은 Animation Event(플레이어와 동일 함수명).
+    /// </summary>
+    public void IdleState()
+    {
+    }
+
     void OnCollisionEnter(Collision collision)
     {
         if (!IsServer) return;

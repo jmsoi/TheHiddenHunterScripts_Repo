@@ -91,25 +91,59 @@ public class PlayerShop : NetworkBehaviour
         if (!success)
         {
             UnityEngine.Debug.Log("스킬 구매 실패 (서버 잠금/검증 실패)");
+            MessageManager.Enqueue(MessageManager.FormatPurchaseFailedPassiveLocked(skillIndex));
             return;
         }
 
-        bool purchased = ApplyLocalPurchase(skillIndex);
-        UnityEngine.Debug.Log(purchased ? $"스킬 {skillIndex} 구매 완료!" : $"스킬 {skillIndex} 구매 실패 (자원/슬롯)");
+        if (!TryApplyLocalPurchase(skillIndex, out var failKind))
+        {
+            switch (failKind)
+            {
+                case LocalPurchaseFailKind.Invalid:
+                    MessageManager.Enqueue("스킬 구매에 실패했습니다.");
+                    break;
+                case LocalPurchaseFailKind.NotEnoughResource:
+                    MessageManager.Enqueue(MessageManager.FormatPurchaseFailedNotEnoughResources(skillIndex));
+                    break;
+                case LocalPurchaseFailKind.NoEmptySlot:
+                    MessageManager.Enqueue(MessageManager.FormatPurchaseFailedNoEmptySlot());
+                    break;
+            }
+            UnityEngine.Debug.Log($"스킬 {skillIndex} 구매 실패 ({failKind})");
+            return;
+        }
+
+        MessageManager.Enqueue(MessageManager.FormatPurchaseSuccessLocal(skillIndex));
+        UnityEngine.Debug.Log($"스킬 {skillIndex} 구매 완료!");
     }
 
+    enum LocalPurchaseFailKind { None, Invalid, NotEnoughResource, NoEmptySlot }
+
     /// <summary>서버 승인 후 구매자 클라이언트에서 자원 차감 및 슬롯 장착.</summary>
-    private bool ApplyLocalPurchase(int skillIndex)
+    private bool TryApplyLocalPurchase(int skillIndex, out LocalPurchaseFailKind failKind)
     {
+        failKind = LocalPurchaseFailKind.None;
         var db = SkillManager.Instance.skillDatabase;
         if (db == null || skillIndex < 0 || skillIndex >= db.skills.Count)
+        {
+            failKind = LocalPurchaseFailKind.Invalid;
             return false;
+        }
 
         var skillData = db.skills[skillIndex];
         if (!ResourceManager.Instance.SpendResource(skillData.resource_type, skillData.resource_amount))
+        {
+            failKind = LocalPurchaseFailKind.NotEnoughResource;
             return false;
+        }
 
-        return SkillManager.Instance.TryAddSkillToFirstEmptySlot(skillData);
+        if (!SkillManager.Instance.TryAddSkillToFirstEmptySlot(skillData))
+        {
+            failKind = LocalPurchaseFailKind.NoEmptySlot;
+            return false;
+        }
+
+        return true;
     }
     
     // public void Purchasing()

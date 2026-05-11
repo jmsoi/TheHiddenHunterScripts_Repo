@@ -22,6 +22,8 @@ public class MapManager : NetworkBehaviour
     [ClientRpc]
     public void DestroyPointClientRpc(int idx)
     {
+        if (mapGameObjects == null || idx < 0 || idx >= mapGameObjects.Length)
+            return;
         if (mapGameObjects[idx] != null)
             mapGameObjects[idx].SetActive(false);
     }

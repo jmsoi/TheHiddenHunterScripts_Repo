@@ -58,10 +58,15 @@ public class ClientSessionManager : MonoBehaviour
             try
             {
                 var lobby = await Unity.Services.Lobbies.LobbyService.Instance.GetLobbyAsync(NetworkSessionData.LobbyId);
-                
-                if (lobby.Data?[GameConstants.Network.LOBBY_DATA_HOST_READY_KEY]?.Value == "true")
+                var data = lobby.Data;
+                // 로비 Data는 키가 없을 수 있음(맵 생성 전 등). 인덱서 사용 시 KeyNotFoundException 방지
+                if (data != null
+                    && data.TryGetValue(GameConstants.Network.LOBBY_DATA_HOST_READY_KEY, out var hostReadyEntry)
+                    && hostReadyEntry.Value == "true"
+                    && data.TryGetValue(GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY, out var relayEntry)
+                    && !string.IsNullOrEmpty(relayEntry.Value))
                 {
-                    NetworkSessionData.RelayCode = lobby.Data[GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY].Value;
+                    NetworkSessionData.RelayCode = relayEntry.Value.Trim();
                     break;
                 }
             }

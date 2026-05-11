@@ -359,7 +359,7 @@ public class LobbyNetworkService : MonoBehaviour
                         lobby.Data.ContainsKey(GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY) &&
                         !string.IsNullOrEmpty(lobby.Data[GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY].Value))
                     {
-                        relayCode = lobby.Data[GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY].Value;
+                        relayCode = lobby.Data[GameConstants.Network.LOBBY_DATA_RELAY_CODE_KEY].Value.Trim();
                         Debug.Log($"[JoinCustomRoomAsync] RelayCode 발견: {relayCode}");
                         break;
                     }
@@ -385,12 +385,12 @@ public class LobbyNetworkService : MonoBehaviour
                 return false;
             }
 
-            // Relay 서버에 접속 시도
-            var allocation = await RelayService.Instance.JoinAllocationAsync(relayCode);
+            // Relay 조인은 Host 준비 후 ClientSessionManager.JoinRelayServer에서 한 번만 수행합니다.
+            // 여기서 JoinAllocationAsync를 호출하면, 게임 시작 시 HostSessionManager가 새 할당으로
+            // 로비의 RelayCode를 덮어쓴 뒤 이전 조인 코드가 무효되어 404(join code not found)가 날 수 있습니다.
+            // 빠른 매칭(RequestQuickMatchAsync)도 로비 서비스 단계에서는 Relay에 조인하지 않습니다.
+            Debug.Log($"RelayCode(로비 동기화용): {relayCode}");
 
-            Debug.Log($"RelayCode: {relayCode}");
-
-            // 세션 정보 설정
             NetworkSessionData.RelayCode = relayCode;
 
             // 인원 체크 시작

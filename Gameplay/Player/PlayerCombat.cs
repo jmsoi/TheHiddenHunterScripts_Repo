@@ -144,7 +144,11 @@ public class PlayerCombat : NetworkBehaviour
         if (SkillManager.Instance == null) return;
         
         Skill skill = SkillManager.Instance.GetSkill(slotIndex);
-        
+        int dbIndex = ResolveSkillDatabaseIndex(skill);
+        // 검·활은 서버 판정 후 처치/빗나감 메시지로 보냄. 그 외 스킬만 여기서 알림.
+        if (dbIndex >= 0 && !(skill.type == SkillType.Attack && (skill.index == 0 || skill.index == 1)))
+            AnnounceSkillUsedServerRpc(dbIndex);
+
         if (skill.type == SkillType.Attack)
         {
             switch (skill.index)
@@ -203,8 +207,42 @@ public class PlayerCombat : NetworkBehaviour
             }
         }
     }
-    
 
+    static int ResolveSkillDatabaseIndex(Skill s)
+    {
+        if (s == null || SkillManager.Instance == null || SkillManager.Instance.skillDatabase == null)
+            return -1;
+        var list = SkillManager.Instance.skillDatabase.skills;
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (ReferenceEquals(list[i], s))
+                return i;
+            var e = list[i];
+            if (e._name == s._name && e.type == s.type && e.index == s.index)
+                return i;
+        }
+        return -1;
+    }
+
+    [ServerRpc(RequireOwnership = true)]
+    void AnnounceSkillUsedServerRpc(int skillDatabaseIndex)
+    {
+        AnnounceSkillUsedAllClientRpc(skillDatabaseIndex);
+    }
+
+    [ClientRpc]
+    void AnnounceSkillUsedAllClientRpc(int skillDatabaseIndex)
+    {
+        MessageManager.Enqueue(MessageManager.FormatSkillUsed(skillDatabaseIndex));
+    }
+
+    [ClientRpc]
+    void AnnounceCombatResultAllClientRpc(byte weapon, byte outcome)
+    {
+        var msg = MessageManager.FormatCombatResult(weapon, outcome);
+        if (!string.IsNullOrEmpty(msg))
+            MessageManager.Enqueue(msg);
+    }
 
     #region Attack
 
@@ -214,7 +252,11 @@ public class PlayerCombat : NetworkBehaviour
         Vector3 boxCenter = transform.position + transform.TransformDirection(new Vector3(0, 1, 1));
         Collider[] hitColliders = Physics.OverlapBox(boxCenter, new Vector3(0.5f, 1, 1) * 0.5f, Quaternion.identity, characterLayerMask);
         
-        if (hitColliders.Length == 0) return;
+        if (hitColliders.Length == 0)
+        {
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomeMiss);
+            return;
+        }
         
         GameObject nearObj = null;
         float nearObjDistance = 100;
@@ -240,7 +282,7 @@ public class PlayerCombat : NetworkBehaviour
         if (nearObj == null)
         {
             Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 실패");
-            stateManager.ChangeState(PlayerState.Idle);
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomeMiss);
             return;
         }
         
@@ -248,6 +290,7 @@ public class PlayerCombat : NetworkBehaviour
         {
             nearObj.GetComponent<NPCController>().Dead();
             Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - NPC 제거");
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomeNpcKill);
         }
         else if (nearObj.CompareTag("Player"))
         {
@@ -257,15 +300,15 @@ public class PlayerCombat : NetworkBehaviour
             {
                 targetHealth.Dead();
                 Debug.Log($"Player {NetworkObjectId} KnifeAttack 감지 성공 - Player 제거");
-                
-                // 공격자(자기 자신)의 클라이언트에서만 승리 처리
-                if (IsOwner)
-                {
-                    EndGameSessionClientRpc(true);
-                }
+                AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomePlayerKill);
+                // 승리 UI는 ClientRpc 안에서 이 오브젝트의 오너(공격자) 클라에서만 처리
+                EndGameSessionClientRpc(true);
             }
+            else
+                AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomeMiss);
         }
-        stateManager.ChangeState(PlayerState.Idle);
+        else
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponKnife, MessageManager.CombatOutcomeMiss);
     }
     [ServerRpc(RequireOwnership = true)]
     void GunAttackServerRpc()
@@ -276,6 +319,7 @@ public class PlayerCombat : NetworkBehaviour
         if (hitColliders.Length == 0)
         {
             Debug.Log($"Player {NetworkObjectId} GunAttack 감지 실패");
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeMiss);
             return;
         }
         
@@ -302,6 +346,7 @@ public class PlayerCombat : NetworkBehaviour
         if (target == null)
         {
             Debug.Log($"Player {NetworkObjectId} GunAttack 타겟 없음");
+            AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeMiss);
             return;
         }
 
@@ -332,14 +377,13 @@ public class PlayerCombat : NetworkBehaviour
             if (((1 << hitObject.layer) & blockLayerMask) != 0)
             {
                 Debug.Log($"Player {NetworkObjectId} 총알이 Block에 막힘");
-                
+                AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeBlocked);
                 // 시각적 효과만 (선택사항)
                 if (bulletPrefab != null)
                 {
                     GameObject effect = Instantiate(bulletPrefab, hit.point, Quaternion.LookRotation(-direction));
                     Destroy(effect, 0.1f); // 짧은 시간만 표시
                 }
-                stateManager.ChangeState(PlayerState.Idle);
                 return;
             }
             
@@ -348,14 +392,13 @@ public class PlayerCombat : NetworkBehaviour
             {
                 Debug.Log($"Player {NetworkObjectId} 총알이 NPC에 명중");
                 hitObject.GetComponent<NPCController>()?.Dead();
-                
+                AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeNpcKill);
                 // 시각적 효과
                 if (bulletPrefab != null)
                 {
                     GameObject effect = Instantiate(bulletPrefab, hit.point, Quaternion.LookRotation(-direction));
                     Destroy(effect, 0.1f);
                 }
-                stateManager.ChangeState(PlayerState.Idle);
                 return;
             }
             
@@ -367,13 +410,12 @@ public class PlayerCombat : NetworkBehaviour
                 if (targetHealth != null)
                 {
                     targetHealth.Dead();
-                    
-                    // 발사자에게 승리 알림
-                    if (IsOwner)
-                    {
-                        EndGameSessionClientRpc(true);
-                    }
+                    AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomePlayerKill);
+                    // 승리 UI는 ClientRpc 안에서 이 오브젝트의 오너(발사자) 클라에서만 처리
+                    EndGameSessionClientRpc(true);
                 }
+                else
+                    AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeMiss);
                 
                 // 시각적 효과
                 if (bulletPrefab != null)
@@ -381,14 +423,13 @@ public class PlayerCombat : NetworkBehaviour
                     GameObject effect = Instantiate(bulletPrefab, hit.point, Quaternion.LookRotation(-direction));
                     Destroy(effect, 0.1f);
                 }
-                stateManager.ChangeState(PlayerState.Idle);
                 return;
             }
         }
         
         // 아무것도 맞지 않음 (타겟이 이동했거나 다른 이유)
         Debug.Log($"Player {NetworkObjectId} 총알이 빗나감");
-        stateManager.ChangeState(PlayerState.Idle);
+        AnnounceCombatResultAllClientRpc(MessageManager.CombatWeaponGun, MessageManager.CombatOutcomeMiss);
     }
 
     [ServerRpc(RequireOwnership = true)]
@@ -558,6 +599,14 @@ public class PlayerCombat : NetworkBehaviour
             var victimCombat = client.PlayerObject.GetComponent<PlayerCombat>();
             victimCombat?.ApplyFreezeClientRpc(frozenDuration);
         }
+
+        var allNpcs = FindObjectsByType<NPCController>(FindObjectsSortMode.None);
+        for (int i = 0; i < allNpcs.Length; i++)
+        {
+            if (allNpcs[i] == null || allNpcs[i].currentState.Value == NPCController.NPCState.Dead)
+                continue;
+            allNpcs[i].ApplyFrozenFromServer(frozenDuration);
+        }
     }
 
     [ClientRpc]
@@ -595,18 +644,6 @@ public class PlayerCombat : NetworkBehaviour
     {
         
     }
-
-
-    // [ServerRpc(RequireOwnership = true)]
-    // void ShieldPassiveServerRpc()
-    // {
-    //     ShieldPassiveClientRpc();
-    // }
-    // [ClientRpc]
-    // void ShieldPassiveClientRpc()
-    // {
-    //     ShieldPassive();
-    // }
     #endregion
 
     

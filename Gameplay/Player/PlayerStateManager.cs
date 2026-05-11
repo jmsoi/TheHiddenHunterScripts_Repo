@@ -40,7 +40,7 @@ public class PlayerStateManager : NetworkBehaviour
         else if (IsOwner) ChangeStateServerRpc(newState);
     }
     
-    [ServerRpc]
+    [ServerRpc(RequireOwnership = true)]
     void ChangeStateServerRpc(PlayerState newState)
     {
         Debug.Log($"Player {NetworkObjectId} ChangeStateServerRpc: {networkState.Value} -> {newState}");

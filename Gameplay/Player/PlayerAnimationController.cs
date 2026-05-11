@@ -2,7 +2,8 @@ using UnityEngine;
 using Unity.Netcode;
 
 /// <summary>
-/// 플레이어 애니메이션 관리 담당
+/// 플레이어 애니메이션 관리 담당.
+/// 공격 등은 PlayerState로 트리거만 맞추고, Idle 클립의 Animation Event <c>IdleState</c>에서 로직 상태를 Idle로 맞춤(A 방식).
 /// </summary>
 [RequireComponent(typeof(Animator))]
 public class PlayerAnimationController : NetworkBehaviour
@@ -14,6 +15,13 @@ public class PlayerAnimationController : NetworkBehaviour
     {
         playerAnimator = GetComponent<Animator>();
         stateManager = GetComponent<PlayerStateManager>();
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        if (stateManager != null)
+            ApplyAnimatorForState(stateManager.networkState.Value, resetAttackTriggers: true);
     }
     
     private void OnEnable()
@@ -46,7 +54,13 @@ public class PlayerAnimationController : NetworkBehaviour
             }
         }
         
-        // 이전 상태 정리
+        ClearPreviousStateTriggers(previousValue);
+        ApplyAnimatorForState(newValue, resetAttackTriggers: false);
+    }
+
+    void ClearPreviousStateTriggers(PlayerState previousValue)
+    {
+        if (playerAnimator == null) return;
         switch (previousValue)
         {
             case PlayerState.Mining:
@@ -58,13 +72,34 @@ public class PlayerAnimationController : NetworkBehaviour
             case PlayerState.Attack_Gun:
                 playerAnimator.ResetTrigger("Attack_Gun");
                 break;
+            case PlayerState.Attack_LandMine:
+                playerAnimator.ResetTrigger("Attack_LandMine");
+                break;
             case PlayerState.Dead:
                 playerAnimator.ResetTrigger("Die");
                 break;
         }
-        
-        // 새 상태 설정
-        switch (newValue)
+    }
+
+    /// <param name="resetAttackTriggers">스폰 직후 등 — 이전 트리거 잔류 방지</param>
+    void ApplyAnimatorForState(PlayerState state, bool resetAttackTriggers)
+    {
+        if (playerAnimator == null)
+        {
+            playerAnimator = GetComponent<Animator>();
+            if (playerAnimator == null) return;
+        }
+
+        if (resetAttackTriggers)
+        {
+            playerAnimator.ResetTrigger("Attack_Knife");
+            playerAnimator.ResetTrigger("Attack_Gun");
+            playerAnimator.ResetTrigger("Attack_LandMine");
+            playerAnimator.ResetTrigger("Mining");
+            playerAnimator.ResetTrigger("Die");
+        }
+
+        switch (state)
         {
             case PlayerState.Idle:
                 playerAnimator.SetInteger("Move", 0);
@@ -81,6 +116,9 @@ public class PlayerAnimationController : NetworkBehaviour
             case PlayerState.Attack_Gun:
                 playerAnimator.SetTrigger("Attack_Gun");
                 break;
+            case PlayerState.Attack_LandMine:
+                playerAnimator.SetTrigger("Attack_LandMine");
+                break;
             case PlayerState.Dead:
                 playerAnimator.SetTrigger("Die");
                 break;
@@ -94,5 +132,15 @@ public class PlayerAnimationController : NetworkBehaviour
             playerAnimator.SetTrigger(triggerName);
         }
     }
-}
 
+    /// <summary>
+    /// Idle 애니 클립에 넣은 Animation Event 함수명과 동일해야 합니다.
+    /// 오너만 <see cref="PlayerStateManager.ChangeState"/>를 호출해 네트워크 상태를 Idle로 맞춥니다.
+    /// </summary>
+    public void IdleState()
+    {
+        if (!IsOwner || stateManager == null)
+            return;
+        stateManager.ChangeState(PlayerState.Idle);
+    }
+}
