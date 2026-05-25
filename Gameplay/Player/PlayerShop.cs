@@ -113,8 +113,26 @@ public class PlayerShop : NetworkBehaviour
             return;
         }
 
-        MessageManager.Enqueue(MessageManager.FormatPurchaseSuccessLocal(skillIndex));
+        var skillData = SkillManager.Instance.skillDatabase.skills[skillIndex];
+        if (skillData.type == SkillType.Passive)
+            RequestPassivePurchaseAnnounceServerRpc(skillIndex);
+        else
+            MessageManager.Enqueue(MessageManager.FormatPurchaseSuccessLocal(skillIndex));
+
+        SoundManager.Instance?.PlayShopPurchase();
         UnityEngine.Debug.Log($"스킬 {skillIndex} 구매 완료!");
+    }
+
+    [ServerRpc(RequireOwnership = true)]
+    void RequestPassivePurchaseAnnounceServerRpc(int skillIndex)
+    {
+        AnnouncePassivePurchaseAllClientRpc(skillIndex);
+    }
+
+    [ClientRpc]
+    void AnnouncePassivePurchaseAllClientRpc(int skillIndex)
+    {
+        MessageManager.Enqueue(MessageManager.FormatPassivePurchaseGlobal(skillIndex));
     }
 
     enum LocalPurchaseFailKind { None, Invalid, NotEnoughResource, NoEmptySlot }

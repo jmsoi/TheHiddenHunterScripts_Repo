@@ -45,6 +45,24 @@ public class MessageManager : MonoBehaviour
         return $"{name}을(를) 구매했습니다.";
     }
 
+    /// <summary>패시브 구매 시 모든 클라이언트에 표시.</summary>
+    public static string FormatPassivePurchaseGlobal(int skillDatabaseIndex)
+    {
+        var db = SkillManager.Instance != null ? SkillManager.Instance.skillDatabase : null;
+        if (db != null && skillDatabaseIndex >= 0 && skillDatabaseIndex < db.skills.Count)
+        {
+            var skill = db.skills[skillDatabaseIndex];
+            if (skill.type == SkillType.Passive && skill.index == 0)
+            {
+                int amount = GameConstants.Player.RESOURCE_MASTER_WIN_AMOUNT;
+                return $"누군가가 {skill._name}을(를) 구매했습니다. Blue·Red·Yellow 자원을 각 {amount}개씩 획득하면 승리합니다.";
+            }
+        }
+
+        var name = SkillNameFromDatabase(skillDatabaseIndex);
+        return $"누군가가 {name}을(를) 구매했습니다.";
+    }
+
     /// <summary>내 클라이언트에만 보이는 구매 실패(패시브 선점).</summary>
     public static string FormatPurchaseFailedPassiveLocked(int skillDatabaseIndex)
     {
