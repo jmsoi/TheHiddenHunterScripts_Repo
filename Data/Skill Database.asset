@@ -26,7 +26,7 @@ MonoBehaviour:
     index: 0
     _name: "\uC740\uC2E0, \uC774\uC18D \uC99D\uAC00"
     resource_type: 1
-    resource_amount: 0
+    resource_amount: 5
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: 0c8f7659f98dd4037bb7eb7c36a2903d, type: 3}
@@ -35,7 +35,7 @@ MonoBehaviour:
     index: 1
     _name: "\uC554\uD751 \uC2DC\uC57C"
     resource_type: 1
-    resource_amount: 0
+    resource_amount: 5
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: 34a892a3288de4d4da910f4c373dee45, type: 3}
@@ -45,7 +45,7 @@ MonoBehaviour:
     index: 2
     _name: "\uB3D9\uACB0"
     resource_type: 1
-    resource_amount: 0
+    resource_amount: 5
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: 540bc0b5676fc4bde832bb968441a3b3, type: 3}
@@ -55,7 +55,7 @@ MonoBehaviour:
     index: 0
     _name: "\uAC80"
     resource_type: 2
-    resource_amount: 0
+    resource_amount: 3
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: c9365dd17f80d4cd3b90797dafd9c6e0, type: 3}
@@ -65,7 +65,7 @@ MonoBehaviour:
     index: 1
     _name: "\uCD1D"
     resource_type: 2
-    resource_amount: 0
+    resource_amount: 4
     cooldown: 5
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: 92df892897c8b44cd8f235d04a44a18f, type: 3}
@@ -75,7 +75,7 @@ MonoBehaviour:
     index: 2
     _name: "\uC9C0\uB8B0"
     resource_type: 2
-    resource_amount: 0
+    resource_amount: 5
     cooldown: 3
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: e75243d64710b42faac45d5f7e255a64, type: 3}
@@ -85,7 +85,7 @@ MonoBehaviour:
     index: 0
     _name: "\uC790\uC6D0\uC218\uC9D1 \uC2B9\uB9AC"
     resource_type: 3
-    resource_amount: 0
+    resource_amount: 7
     cooldown: 1
     currentCooldown: 0
     sprite: {fileID: 21300000, guid: e973a6149cf97420f86c687892dbdbb5, type: 3}
@@ -95,7 +95,7 @@ MonoBehaviour:
     index: 1
     _name: "NPC \uC804\uBA78 \uC2B9\uB9AC"
     resource_type: 3
-    resource_amount: 0
+    resource_amount: 7
     cooldown: 1
     currentCooldown: 1
     sprite: {fileID: 21300000, guid: d8ec7bed8b86f4a3d905859476e40a84, type: 3}

@@ -18,6 +18,11 @@ public class PlayerHealth : NetworkBehaviour
         // 서버에서 호출되거나 Owner가 직접 호출할 수 있음
         stateManager.ChangeState(PlayerState.Dead);
         
+        if (IsServer)
+            PlayDeathSoundClientRpc();
+        else if (IsOwner)
+            SoundManager.Instance?.PlayCharacterDeathAt(transform.position);
+        
         // Owner의 클라이언트에서 패배 화면 표시
         if (IsOwner)
         {
@@ -28,6 +33,12 @@ public class PlayerHealth : NetworkBehaviour
             // 서버에서 호출된 경우, Owner 클라이언트에 알림
             NotifyDeathClientRpc();
         }
+    }
+
+    [ClientRpc]
+    void PlayDeathSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayCharacterDeathAt(transform.position);
     }
     
     [ClientRpc]

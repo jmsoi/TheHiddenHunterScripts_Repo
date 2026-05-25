@@ -34,7 +34,7 @@ public class PlayerCombat : NetworkBehaviour
     public float frozenDuration = 10f;
 
     [Header("Passive Win Condition")]
-    public int resourceMasterWinAmount = 10;
+    public int resourceMasterWinAmount = GameConstants.Player.RESOURCE_MASTER_WIN_AMOUNT;
 
     private bool resourceMasterWinTriggered;
     private bool npcKillerWinTriggered;
@@ -244,11 +244,48 @@ public class PlayerCombat : NetworkBehaviour
             MessageManager.Enqueue(msg);
     }
 
+    [ClientRpc]
+    void PlayKnifeSwingSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayKnifeSwingAt(transform.position);
+    }
+
+    [ClientRpc]
+    void PlayGunFireSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayGunFireAt(transform.position);
+    }
+
+    [ClientRpc]
+    void PlayHideStealthSpeedSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayHideStealthSpeedAt(transform.position);
+    }
+
+    [ClientRpc]
+    void PlayBlindDarkVisionSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayBlindDarkVisionAt(transform.position);
+    }
+
+    [ClientRpc]
+    void PlayFrozenSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayFrozenAt(transform.position);
+    }
+
+    [ClientRpc]
+    void PlayLandmineTriggerSoundClientRpc(Vector3 worldPosition)
+    {
+        SoundManager.Instance?.PlayLandmineTriggerAt(worldPosition);
+    }
+
     #region Attack
 
     [ServerRpc(RequireOwnership = true)]
     void KnifeAttackServerRpc()
     {
+        PlayKnifeSwingSoundClientRpc();
         Vector3 boxCenter = transform.position + transform.TransformDirection(new Vector3(0, 1, 1));
         Collider[] hitColliders = Physics.OverlapBox(boxCenter, new Vector3(0.5f, 1, 1) * 0.5f, Quaternion.identity, characterLayerMask);
         
@@ -313,6 +350,7 @@ public class PlayerCombat : NetworkBehaviour
     [ServerRpc(RequireOwnership = true)]
     void GunAttackServerRpc()
     {
+        PlayGunFireSoundClientRpc();
         // 가장 가까운 적 찾기
         Collider[] hitColliders = Physics.OverlapSphere(transform.position, 4f, characterLayerMask);
         
@@ -476,6 +514,9 @@ public class PlayerCombat : NetworkBehaviour
         if (targetNetworkObject == null || targetNetworkObject.gameObject == gameObject)
             return;
 
+        var detonationPosition = targetNetworkObject.transform.position;
+        PlayLandmineTriggerSoundClientRpc(detonationPosition);
+
         if (targetNetworkObject.TryGetComponent<PlayerHealth>(out var targetHealth))
         {
             targetHealth.Dead();
@@ -506,7 +547,11 @@ public class PlayerCombat : NetworkBehaviour
     void HideMoveServerRpc() => HideMoveApplyClientRpc();
 
     [ClientRpc]
-    void HideMoveApplyClientRpc() => StartCoroutine(HideMoveCoroutine());
+    void HideMoveApplyClientRpc()
+    {
+        SoundManager.Instance?.PlayHideStealthSpeedAt(transform.position);
+        StartCoroutine(HideMoveCoroutine());
+    }
 
     private IEnumerator HideMoveCoroutine()
     {
@@ -543,7 +588,11 @@ public class PlayerCombat : NetworkBehaviour
     void BlindZoneMoveServerRpc() => BlindZoneMoveApplyClientRpc();
 
     [ClientRpc]
-    void BlindZoneMoveApplyClientRpc() => StartCoroutine(BlindZoneMoveCoroutine());
+    void BlindZoneMoveApplyClientRpc()
+    {
+        SoundManager.Instance?.PlayBlindDarkVisionAt(transform.position);
+        StartCoroutine(BlindZoneMoveCoroutine());
+    }
 
     private IEnumerator BlindZoneMoveCoroutine()
     {
@@ -607,6 +656,8 @@ public class PlayerCombat : NetworkBehaviour
                 continue;
             allNpcs[i].ApplyFrozenFromServer(frozenDuration);
         }
+
+        PlayFrozenSoundClientRpc();
     }
 
     [ClientRpc]

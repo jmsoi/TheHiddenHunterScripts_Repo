@@ -63,6 +63,8 @@ public static class GameConstants
         public const float DEFAULT_SPEED = 5f;
         public const float COLLISION_CHECK_DISTANCE = 1f;
         public const float MIN_MOVEMENT_THRESHOLD = 0.001f;
+        /// <summary>자원수집 승리 패시브 — Blue·Red·Yellow 각각 필요 개수.</summary>
+        public const int RESOURCE_MASTER_WIN_AMOUNT = 7;
     }
     
     // ===== 맵 설정 =====

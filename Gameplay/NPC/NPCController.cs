@@ -287,7 +287,16 @@ public class NPCController : NetworkBehaviour
             return;
         ChangeState(NPCState.Dead);
         if (IsServer)
+        {
+            PlayDeathSoundClientRpc();
             OnAnyNpcDead?.Invoke();
+        }
+    }
+
+    [ClientRpc]
+    void PlayDeathSoundClientRpc()
+    {
+        SoundManager.Instance?.PlayCharacterDeathAt(transform.position);
     }
 
     // ===== 이동 시스템 =====
@@ -351,6 +360,7 @@ public class NPCController : NetworkBehaviour
                     break;
                 case NPCState.Mining:
                     npcAnimator.SetInteger("state", 2);
+                    SoundManager.Instance?.PlayMiningAt(transform.position);
                     break;
                 case NPCState.Purchasing:
                     npcAnimator.SetInteger("state", 3);
