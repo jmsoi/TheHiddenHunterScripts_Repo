@@ -29,8 +29,6 @@ public class SoundManager : MonoBehaviour
     [Header("채굴")]
     [SerializeField] AudioClip miningClip;
 
-    [SerializeField] [Range(0f, 1f)] float sfxVolume = 1f;
-
     AudioSource _audioSource;
 
     void Awake()
@@ -42,10 +40,6 @@ public class SoundManager : MonoBehaviour
         }
         Instance = this;
         _audioSource = GetComponent<AudioSource>();
-        if (_audioSource == null)
-            _audioSource = gameObject.AddComponent<AudioSource>();
-        _audioSource.playOnAwake = false;
-        _audioSource.spatialBlend = 0f;
     }
 
     void OnDestroy()
@@ -54,15 +48,7 @@ public class SoundManager : MonoBehaviour
             Instance = null;
     }
 
-    public void PlayKnifeSwing() => Play2D(knifeSwingClip);
-    public void PlayGunFire() => Play2D(gunFireClip);
-    public void PlayHideStealthSpeed() => Play2D(hideStealthSpeedClip);
-    public void PlayBlindDarkVision() => Play2D(blindDarkVisionClip);
-    public void PlayFrozen() => Play2D(frozenClip);
-    public void PlayLandmineTrigger() => Play2D(landmineTriggerClip);
-    public void PlayCharacterDeath() => Play2D(characterDeathClip);
     public void PlayShopPurchase() => Play2D(shopPurchaseClip);
-    public void PlayMining() => Play2D(miningClip);
 
     public void PlayKnifeSwingAt(Vector3 worldPosition) => PlayAt(knifeSwingClip, worldPosition);
     public void PlayGunFireAt(Vector3 worldPosition) => PlayAt(gunFireClip, worldPosition);
@@ -77,13 +63,25 @@ public class SoundManager : MonoBehaviour
     {
         if (clip == null || _audioSource == null)
             return;
-        _audioSource.PlayOneShot(clip, sfxVolume);
+        _audioSource.PlayOneShot(clip, 1f);
     }
 
     void PlayAt(AudioClip clip, Vector3 worldPosition)
     {
         if (clip == null)
             return;
-        AudioSource.PlayClipAtPoint(clip, worldPosition, sfxVolume);
+
+        var go = new GameObject("SFX_3D");
+        go.transform.position = worldPosition;
+
+        var source = go.AddComponent<AudioSource>();
+        source.clip = clip;
+        source.volume = 1f;
+        source.spatialBlend = 1f;
+        source.minDistance = 20f;
+        source.maxDistance = 50f;
+        source.Play();
+
+        Destroy(go, clip.length + 0.1f);
     }
 }

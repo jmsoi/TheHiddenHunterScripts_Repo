@@ -55,7 +55,7 @@ public class MessageManager : MonoBehaviour
             if (skill.type == SkillType.Passive && skill.index == 0)
             {
                 int amount = GameConstants.Player.RESOURCE_MASTER_WIN_AMOUNT;
-                return $"누군가가 {skill._name}을(를) 구매했습니다. Blue·Red·Yellow 자원을 각 {amount}개씩 획득하면 승리합니다.";
+                return $"누군가가 {skill._name}을(를) 구매했습니다. 모든 자원을 각 {amount}개씩 획득하면 승리합니다.";
             }
         }
 

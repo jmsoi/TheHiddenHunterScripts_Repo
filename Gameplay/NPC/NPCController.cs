@@ -322,7 +322,11 @@ public class NPCController : NetworkBehaviour
     }
 
     // ===== 채굴 시스템 =====
-    
+    public void MineSound()
+    {
+        SoundManager.Instance?.PlayMiningAt(transform.position);
+    }
+
     void CompletedMining()
     {
         // 서버에서만 실행
@@ -330,10 +334,6 @@ public class NPCController : NetworkBehaviour
         {
             if (targetObjectIndex.Value != -1)
             {
-                // MapObject mapObject = (MapObject)MapManager.Instance.serializedMapData[targetObjectIndex.Value];
-                // ResourceManager.Instance.AddResource(mapObject.ToResourceType(), 1);
-                // Debug.Log("NPC: 광산 채굴 완료");
-                
                 MapManager.Instance.serializedMapData[targetObjectIndex.Value] = (int)MapObject.None;
                 MapManager.Instance.DestroyPointClientRpc(targetObjectIndex.Value);
             }
@@ -360,7 +360,6 @@ public class NPCController : NetworkBehaviour
                     break;
                 case NPCState.Mining:
                     npcAnimator.SetInteger("state", 2);
-                    SoundManager.Instance?.PlayMiningAt(transform.position);
                     break;
                 case NPCState.Purchasing:
                     npcAnimator.SetInteger("state", 3);

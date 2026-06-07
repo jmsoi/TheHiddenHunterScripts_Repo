@@ -19,6 +19,8 @@ public class PlayerCombat : NetworkBehaviour
     public GameObject bulletPrefab;
     public GameObject landMinePrefab_visible;
     public GameObject landMinePrefab_invisible;
+    
+    public ParticleSystem hideSmokeEffect;
 
     public Material myheadMaterial;
     public Material mybodyMaterial;
@@ -550,7 +552,17 @@ public class PlayerCombat : NetworkBehaviour
     void HideMoveApplyClientRpc()
     {
         SoundManager.Instance?.PlayHideStealthSpeedAt(transform.position);
+        PlayHideSmokeEffect();
         StartCoroutine(HideMoveCoroutine());
+    }
+
+    void PlayHideSmokeEffect()
+    {
+        if (hideSmokeEffect == null)
+            return;
+        var effect = Instantiate(hideSmokeEffect, transform.position, Quaternion.identity);
+        effect.Play();
+        Destroy(effect.gameObject, 3f);
     }
 
     private IEnumerator HideMoveCoroutine()

@@ -109,7 +109,6 @@ public class PlayerAnimationController : NetworkBehaviour
                 break;
             case PlayerState.Mining:
                 playerAnimator.SetTrigger("Mining");
-                SoundManager.Instance?.PlayMiningAt(transform.position);
                 break;
             case PlayerState.Attack_Knife:
                 playerAnimator.SetTrigger("Attack_Knife");
@@ -132,6 +131,11 @@ public class PlayerAnimationController : NetworkBehaviour
         {
             playerAnimator.SetTrigger(triggerName);
         }
+    }
+
+    public void MineSound()
+    {
+        SoundManager.Instance?.PlayMiningAt(transform.position);
     }
 
     /// <summary>
